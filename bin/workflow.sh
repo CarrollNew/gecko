@@ -50,7 +50,7 @@ cd intermediateFiles/${seqXName}-${seqYName}
 
 
 echo "${BINDIR}/reverseComplement ${seqYName}.${extensionX} ${seqYName}-revercomp.${extensionY}"
-${BINDIR}/reverseComplement ${seqYName}.${extensionX} ${seqYName}-revercomp.${extensionY}
+${BINDIR}/reverseComplement ${seqYName}.${extensionY} ${seqYName}-revercomp.${extensionY}
 
 if [[ ! -f ../dictionaries/${seqXName}.d2hP ]];	then
 	echo "${BINDIR}/dictionary.sh ${seqXName}.${extensionX} &"
