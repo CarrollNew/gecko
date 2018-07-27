@@ -7,6 +7,9 @@
 #include <math.h>
 #include "structs.h"
 
+
+char final_strand = 'f';
+
 void terror(char *s) {
     printf("ERR**** %s ****\n", s);
     exit(-1);

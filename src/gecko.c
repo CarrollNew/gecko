@@ -9,7 +9,6 @@
 #include "dictionaryFunctions.h"
 #include "comparisonFunctions.h"
 
-char final_strand = 'f';
 
 int main(int ac, char **av) {
     if (ac < 8) {
