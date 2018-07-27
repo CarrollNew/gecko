@@ -1,6 +1,6 @@
 CC=gcc
 CXX=g++
-CFLAGS=-O3 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Wall -DELAPSEDTIME
+CFLAGS=-O3 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Wall -DELAPSEDTIME -DVERBOSE
 BIN=../bin
 
 all: gecko wordsStat hitsStat ramgecko2gecko indexmaker filterFrags

@@ -30,7 +30,7 @@ struct FragFile *fragsReverse(char *seqX, char *seqY, hit *hits, uint64_t nHits,
 
 long double computeExpectedValueOfFrag(struct FragFile * frag, struct statsHSP * seqStatsX, struct statsHSP * seqStatsY);
 
-inline char complement(char c) {
+char complement(char c) {
     switch (c) {
         case 'A':
             return 'T';
@@ -462,7 +462,7 @@ void *sortHitsFilterHitsFragHitsTh(void *a) {
 #ifdef ELAPSEDTIME
             end = clock();
             elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
-            fprintf(stdout, "[FRAGHITSREV] Elapsed time: %lf\n", elapsed_secs);
+            fprintf(stdout, "[FRAGHITSREV-F] Elapsed time: %lf\n", elapsed_secs);
 #endif
         }
 
@@ -473,8 +473,11 @@ void *sortHitsFilterHitsFragHitsTh(void *a) {
 
         if (*(args->hits_realloc) != NULL)
             free(*(args->hits_realloc));
+        fprintf(stdout, "exiting F on this\n");
         return fragsBuf;
     }
+
+    fprintf(stdout, "exiting F on null\n");
 
     return NULL;
 }
@@ -522,7 +525,7 @@ void *sortHitsFilterHitsFragHitsReverseTh(void *a) {
 #ifdef ELAPSEDTIME
             end = clock();
             elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
-            fprintf(stdout, "[FRAGHITSREV] Elapsed time: %lf\n", elapsed_secs);
+            fprintf(stdout, "[FRAGHITSREV-R] Elapsed time: %lf\n", elapsed_secs);
 #endif
         }
 #ifdef VERBOSE
@@ -533,9 +536,11 @@ void *sortHitsFilterHitsFragHitsReverseTh(void *a) {
 
         if (*(args->hits_realloc) != NULL)
             free(*(args->hits_realloc));
-
+        fprintf(stdout, "exiting R on NULL\n");
         return fragsBuf;
     }
+
+    fprintf(stdout, "exiting R on NULL\n");
     return NULL;
 }
 
@@ -575,6 +580,8 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
     fprintf(stdout, "Memory allocated for the hits buffer\n");
     fflush(stdout);
 #endif
+
+    
 
     while (k < nEntriesX && l < nEntriesY) {
         comp = wordcmp(&entriesX[k].w.b[0], &entriesY[l].w.b[0], wSize);
@@ -619,9 +626,13 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
         else
             stepY = 1;
 
-        for (i = 0; i < entriesX[k].num; i += stepX)
+
+        
+
+        for (i = 0; i < entriesX[k].num; i += stepX){
             for (j = 0; j < entriesY[l].num; j += stepY) {
-                if (entriesY[l].locs[j].strand == 'f') {
+                if (final_strand == 'f' && entriesY[l].locs[j].strand == 'f') {
+                    
                     hBufForward[hitsInBufForward].posX = entriesX[k].locs[i].pos;
                     hBufForward[hitsInBufForward].seqX = entriesX[k].locs[i].seq;
                     hBufForward[hitsInBufForward].posY = entriesY[l].locs[j].pos;
@@ -634,10 +645,11 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
 				fprintf(stdout, "Attempted to allocate: %"PRIu64"\n", (bufSizeForward + MAXBUF) * sizeof(hit));
 				fflush(stdout);
                             perror("Error reallocating forward hits buffer");
-			}
+			            }
                         bufSizeForward += MAXBUF;
                     }
-                } else {
+                } else if(final_strand == 'r' && entriesY[l].locs[j].strand == 'r'){
+                    
                     hBufReverse[hitsInBufReverse].posX = entriesX[k].locs[i].pos;
                     hBufReverse[hitsInBufReverse].seqX = entriesX[k].locs[i].seq;
                     hBufReverse[hitsInBufReverse].posY = entriesY[l].locs[j].pos;
@@ -653,6 +665,7 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
                     }
                 }
             }
+        }
 
         nHits += ((entriesX[k].num / stepX) * (entriesY[l].num / stepY));
 
@@ -726,6 +739,9 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
     argsReverse.seqStatsY = seqStatsY;
     argsReverse.e_value = e_value;
 
+    nFragsForward = 0;
+    nFragsReverse = 0;
+
     /*
     FILE * fileout = fopen("db_nosort_f.hits", "wb");
     fwrite(hBufForward, sizeof(hit), hitsInBufForward, fileout);
@@ -735,13 +751,13 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
     fclose(fileout);
     */
 
-    pthread_create(&thF, NULL, sortHitsFilterHitsFragHitsTh, (void *) (&argsForward));
-    pthread_create(&thR, NULL, sortHitsFilterHitsFragHitsReverseTh, (void *) (&argsReverse));
+    if(final_strand == 'f') pthread_create(&thF, NULL, sortHitsFilterHitsFragHitsTh, (void *) (&argsForward));
+    if(final_strand == 'r') pthread_create(&thR, NULL, sortHitsFilterHitsFragHitsReverseTh, (void *) (&argsReverse));
 
     struct FragFile *fragsBufForward;
     struct FragFile *fragsBufReverse;
-    pthread_join(thF, (void **) &fragsBufForward);
-    pthread_join(thR, (void **) &fragsBufReverse);
+    if(final_strand == 'f')pthread_join(thF, (void **) &fragsBufForward);
+    if(final_strand == 'r')pthread_join(thR, (void **) &fragsBufReverse);
 
     fprintf(stdout, "Frags in forward: %"
     PRIu64
@@ -777,7 +793,7 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
     fflush(stdout);
 #endif
 
-    if (fragsBufForward != NULL) {
+    if (final_strand == 'f' && fragsBufForward != NULL) {
         for (i = 0; i < nFragsForward; i++) {
             writeFragment(&fragsBufForward[i], fOut);
         }
@@ -789,7 +805,7 @@ struct FragFile *hitsAndFrags(char *seqX, char *seqY, char *out, uint64_t seqXLe
     fflush(stdout);
 #endif
 
-    if (fragsBufReverse != NULL) {
+    if (final_strand == 'r' && fragsBufReverse != NULL) {
         for (i = 0; i < nFragsReverse; i++) {
             //this was causing errors
             //uint64_t tmp;

@@ -15,6 +15,8 @@
 
 #define MAXLID 200
 
+extern char final_strand;
+
 //Struct for words program
 typedef struct {
     //Each letter is stored using 2 bits

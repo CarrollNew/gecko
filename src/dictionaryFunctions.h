@@ -57,6 +57,19 @@ void *dictionary(void *a);
 void *dictionaryWithReverse(void *a);
 
 /**
+ * Function to be executed by a pthread to calculate
+ * a sequence dictionary
+    USE THIS ONE FOR THE Y-SEQ forward only
+ */
+void *dictionaryWithReverseButItsActuallyJustForward(void *a);
+
+/**
+ * Function to be executed by a pthread to calculate
+ * a sequence dictionary
+ */
+void *dictionaryOnlyReverse(void * a);
+
+/**
  * Computes the karlin and lambda values from residues frequencies and PAM scoring matrix
  */
 void computeKarlinLambda(struct statsHSP * seqStats, uint64_t nSeqs);

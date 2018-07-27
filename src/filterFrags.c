@@ -36,10 +36,13 @@ int main(int ac,char** av){
 	FILE * fFrags = fopen(av[1], "rb");
 	if(fFrags == NULL){ fprintf(stderr, "Could not open input file\n"); exit(-1); }
 
+	fseek(fFrags, 0L, SEEK_END);
+	uint64_t file_size = ftell(fFrags);
+	rewind(fFrags);
+
 	readSequenceLength(&xtotal, fFrags);
 	readSequenceLength(&ytotal, fFrags);
 	
-
 	
 
 	uint64_t min_l = (uint64_t) atoi(av[2]);
@@ -61,16 +64,15 @@ int main(int ac,char** av){
 	printf("Tot Hits (seeds)     : 0\n");
 	printf("Tot Hits (seeds) used: 0\n");
 	printf("Total fragments      : 0\n");
-
 	printf("========================================================\n");
-
-	
-	
+	printf("Total CSB: 0\n");
+	printf("========================================================\n");
 	printf("Type,xStart,yStart,xEnd,yEnd,strand(f/r),block,length,score,ident,similarity,%%ident,SeqX,SeqY\n");
 	
 	double similarity,likeness;
 				
-	while(!feof(fFrags)){
+	while(!feof(fFrags) && file_size > 16){
+		if(feof(fFrags)) break;
 		readFragment(&frag, fFrags);
 
 		similarity=100.0*(((double)frag.score)/((double)frag.length*4.0));

@@ -621,6 +621,7 @@ void *dictionaryWithReverse(void *a) {
     //Not needed since the karlin and lambda parameters do not change if PAM matrix is the same
     //computeKarlinLambda(args->seqStats, args->nSeqs);
 
+
     if (NW == 0)
         terror("Words array empty");
 
@@ -778,6 +779,676 @@ void *dictionaryWithReverse(void *a) {
 
     return entries;
 }
+
+void *dictionaryWithReverseButItsActuallyJustForward(void *a) {
+    DictionaryArgs *args = (DictionaryArgs *) a;
+    FILE *f;
+    char c;
+    wentryR *words = NULL;
+    wentryR *more_words = NULL;
+    char *seq = NULL;
+    uint64_t Tot = 0;
+    uint64_t i = 0, r = 0;
+    uint64_t j = 0;
+    uint64_t k = 0;
+    uint64_t l = REALLOC_FREQ;
+
+#ifdef ELAPSEDTIME
+    //time variables
+    clock_t begin, end;
+    double elapsed_secs;
+
+    begin = clock();
+#endif
+
+    if ((f = fopen(args->seqFile, "rt")) == NULL) {
+        fprintf(stdout, "opening sequence file: %s\n", args->seqFile);
+        terror("opening sequence file");
+    }
+
+    if ((seq = calloc(READBUF, sizeof(char))) == NULL) {
+        terror("not enough memory for read buffersequence");
+    }
+
+    //To force read
+    i = READBUF + 1;
+    /*
+    c = buffered_fgetc(seq, &i, &r, f);
+    while (c != '\n') {
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+    */
+
+#ifdef VERBOSE
+    fprintf(stdout, "Calculating sequence length of SeqY\n");
+    fflush(stdout);
+#endif
+
+    args->nSeqs = 0;
+    c = buffered_fgetc(seq, &i, &r, f);
+    while ((!feof(f) || (feof(f) && i < r))) {
+        if (!isupper(toupper(c))) {
+            if (c == '>') {
+                args->nSeqs++;
+                c = buffered_fgetc(seq, &i, &r, f);
+                while (c != '\n')
+                    c = buffered_fgetc(seq, &i, &r, f);
+                c = buffered_fgetc(seq, &i, &r, f);
+                continue;
+            }
+        }
+        Tot++;
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+
+#ifdef VERBOSE
+    fprintf(stdout, "SeqY Len: %" PRIu64 " composed of %" PRIu64" sequence(s)\n", Tot, args->nSeqs);
+    fflush(stdout);
+#endif
+
+    args->seqStats = (struct statsHSP *) malloc(args->nSeqs * sizeof(struct statsHSP));
+    if(args->seqStats == NULL) terror("Could not allocate memory for stats array");
+
+    fseek(f, 0, SEEK_SET);
+    //To force read
+    i = READBUF + 1;
+
+    c = buffered_fgetc(seq, &i, &r, f);
+    while (c != '\n') {
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+
+#ifdef VERBOSE
+    fprintf(stdout, "Allocating memory for words of seqY (including reverse). Size: %" PRIu64 "\n", 2 * Tot);
+    fflush(stdout);
+#endif
+    if (Tot == 0)
+        terror("Empty sequence Y file");
+
+    if ((words = calloc(2 * Tot, sizeof(wentryR))) == NULL) {
+        terror("not enough memory for words array");
+    }
+#ifdef VERBOSE
+    fprintf(stdout, "Allocated memory for words of seqY (including reverse).\n");
+    fflush(stdout);
+#endif
+
+
+    wentryR WE, WER;
+    WE.strand = 'f';
+    WER.strand = 'r';
+    WE.seq = 0;
+    WER.seq = 0;
+    args->seqStats[0].tf.total = 0;
+    uint64_t index = 0;
+    uint64_t inEntry = 0;
+    uint64_t NW = 0;
+    uint64_t NoACGT = 0;
+    uint64_t NoC = 0;
+    uint64_t nLocs = 0;
+    uint64_t loc_size = 0;
+    c = buffered_fgetc(seq, &i, &r, f);
+    while (!feof(f) || (feof(f) && i < r)){
+	if (!isupper(toupper(c))) {
+            if (c == '>') {
+                c = buffered_fgetc(seq, &i, &r, f);
+                while (c != '\n'){
+                    c = buffered_fgetc(seq, &i, &r, f);
+                }
+                WE.seq++;
+                WER.seq++;
+                inEntry = 0;
+                index++;
+            }
+            NoC++;
+            c = buffered_fgetc(seq, &i, &r, f);
+            continue;
+        }
+        args->seqStats[WE.seq].tf.total++;
+        shift_word(&WE.w);
+        shift_word_right(&WER.w);
+        switch (c) {
+            case 'A':
+                //WER.w.b[0] |= 192;
+                inEntry++;
+                args->seqStats[WE.seq].tf.A++;
+                break;
+            case 'C':
+                //WER.w.b[0] |= 128;
+                WE.w.b[BYTES_IN_WORD - 1] |= 1;
+                inEntry++;
+                args->seqStats[WE.seq].tf.C++;
+                break;
+            case 'G':
+                //WER.w.b[0] |= 64;
+                WE.w.b[BYTES_IN_WORD - 1] |= 2;
+                inEntry++;
+                args->seqStats[WE.seq].tf.G++;
+                break;
+            case 'T':
+                WE.w.b[BYTES_IN_WORD - 1] |= 3;
+                inEntry++;
+                args->seqStats[WE.seq].tf.T++;
+                break;
+            default :
+                inEntry = 0;
+                NoACGT++;
+                break;
+        }
+        index++;
+        if (inEntry >= (uint64_t) WORD_SIZE) {
+            WE.pos = index - WORD_SIZE;
+            if (WE.pos > Tot)
+                terror("position of forward word out of the sequence");
+            WER.pos = index - 1;
+            if (WE.pos > Tot)
+                terror("position of reverse word out of the sequence");
+            memcpy(&words[NW++], &WE, sizeof(wentryR));
+            //memcpy(&words[NW++], &WER, sizeof(wentryR));
+        }
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+
+    fclose(f);
+    free(seq);
+
+    //Not needed since the karlin and lambda parameters do not change if PAM matrix is the same
+    //computeKarlinLambda(args->seqStats, args->nSeqs);
+
+
+    if (NW == 0)
+        terror("Words array empty");
+
+#ifdef VERBOSE
+    fprintf(stdout, "Reallocating words of SeqY to: %" PRIu64 "\n", NW);
+    fflush(stdout);
+#endif
+
+    words = realloc(words, NW * sizeof(wentryR));
+    if (words == NULL)
+        terror("Error reallocating words of seqY array");
+
+#ifdef ELAPSEDTIME
+    end = clock();
+    elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
+    fprintf(stdout, "[WORDS] Elapsed time: %lf\n", elapsed_secs);
+#endif
+
+#ifdef VERBOSE
+    fprintf(stdout, "Before sorting seqY\n");
+    fflush(stdout);
+#endif
+
+#ifdef ELAPSEDTIME
+    begin = clock();
+#endif
+
+    psortWR(32, words, NW);
+
+#ifdef ELAPSEDTIME
+    end = clock();
+    elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
+    fprintf(stdout, "[SORTWORDS] Elapsed time: %lf\n", elapsed_secs);
+#endif
+
+#ifdef VERBOSE
+    fprintf(stdout, "After sorting seqY\n");
+    fflush(stdout);
+#endif
+
+#ifdef ELAPSEDTIME
+    begin = clock();
+#endif
+
+#ifdef VERBOSE
+    fprintf(stdout, "Before w2hd seqY\n");
+#endif
+    hashentryR *entries = NULL;
+    if (NW == 0)
+        terror("Words array empty");
+    if ((entries = calloc(REALLOC_FREQ, sizeof(hashentryR))) == NULL) {
+        terror("not enough memory for hashentry array");
+    }
+
+    //Copy first entry
+    memcpy(&entries[0].w.b[0], &words[0].w.b[0], 8);
+    entries[0].num = 0;
+    entries[0].locs = NULL;
+    if ((entries[0].locs = calloc(SIZE_LOC, sizeof(locationR))) == NULL) {
+        terror("not enough memory for locs array");
+    }
+    loc_size = SIZE_LOC;
+
+#ifdef VERBOSE
+    fprintf(stdout, "memory allocated w2hd seqY\n");
+#endif
+
+    locationR loc;
+    i = 0;
+    k = 0;
+    //While there are still words in the dictionary
+    while (i < NW) {
+	//Copy current location to aux var loc
+        loc.pos = words[k].pos;
+        loc.seq = words[k].seq;
+        loc.strand = words[k].strand;
+	//If the last added entry is not equal to the current word in the dictionary (new entry)
+        if (wordcmp(&entries[j].w.b[0], &words[k].w.b[0], 32) != 0) {
+            if (nLocs == 0)
+                terror("nLocs is 0");
+	    //Realloc the locations of the last entry to not consume that much memory
+            entries[j].locs = realloc(entries[j].locs, nLocs * sizeof(locationR));
+            if (entries[j].locs == NULL)
+                terror("Error reallocating location array");
+	    //Since its a new entry, increase j to work with this new one 
+            j++;
+	    //If we have no more free allocated entries, realloc everything to get more
+            if (j >= l) {
+                l += REALLOC_FREQ;
+                entries = realloc(entries, l * sizeof(hashentryR));
+                if (entries == NULL) {
+                    terror("Error reallocating entries of seqX array");
+                }
+            }
+	    //Copy the actual word to the new entry
+            memcpy(&entries[j].w.b[0], &words[k].w.b[0], 8);
+            entries[j].num = 0;
+            nLocs = 0;
+	    //Allocate an initial SIZE_LOC of locations for the new entry
+            if ((entries[j].locs = calloc(SIZE_LOC, sizeof(locationR))) == NULL) {
+                terror("not enough memory for locs array");
+            }
+            loc_size = SIZE_LOC;
+        }
+	//If it was not a new entry, but it has too many repetitions, reallocate the locations with an extra SIZE_LOC
+        if (nLocs >= loc_size) {
+            loc_size += SIZE_LOC;
+//            fprintf(stdout, "Reallocating memory from: %lu to: %lu\n",loc_size-SIZE_LOC,loc_size);
+            entries[j].locs = realloc(entries[j].locs, loc_size * sizeof(locationR));
+            if (entries[j].locs == NULL) {
+                terror("Error re-allocation location array");
+            }
+
+        }
+	//Copy the new location (repetition) to the current entry
+        memcpy(&entries[j].locs[nLocs++], &loc, sizeof(locationR));
+        entries[j].num++;
+        i++;
+        k++;
+	//This part frees words while on runtime [Currently there is a bug]
+	
+        if (i % REALLOC_FREQ == 0) {
+            memmove(words, words + REALLOC_FREQ, sizeof(wentryR)*(NW - i));
+            more_words = realloc(words, (NW - i) * sizeof(wentryR));
+            if (more_words == NULL) {
+                free(words);
+                terror("Error reallocating words of seqY array");
+            } else {
+                words = more_words;
+            }
+            k -= REALLOC_FREQ;
+        }
+	
+    }
+#ifdef VERBOSE
+    fprintf(stdout, "After w2hd seqY\n");
+#endif
+
+#ifdef ELAPSEDTIME
+    end = clock();
+    elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
+    fprintf(stdout, "[W2HD] Elapsed time: %lf\n", elapsed_secs);
+#endif
+
+    if (j == 0)
+        terror("Number of entries in the hash table is 0");
+    free(entries[j].locs);
+    entries = realloc(entries, j * sizeof(hashentryR));
+    if (entries == NULL)
+        terror("Error reallocating entries of seqY array");
+    free(words);
+    *(args->nEntries) = j;
+    *(args->seqLen) = Tot;
+
+
+    return entries;
+}
+
+
+void *dictionaryOnlyReverse(void *a) {
+    DictionaryArgs *args = (DictionaryArgs *) a;
+    FILE *f;
+    char c;
+    wentryR *words = NULL;
+    wentryR *more_words = NULL;
+    char *seq = NULL;
+    uint64_t Tot = 0;
+    uint64_t i = 0, r = 0;
+    uint64_t j = 0;
+    uint64_t k = 0;
+    uint64_t l = REALLOC_FREQ;
+
+#ifdef ELAPSEDTIME
+    //time variables
+    clock_t begin, end;
+    double elapsed_secs;
+
+    begin = clock();
+#endif
+
+    if ((f = fopen(args->seqFile, "rt")) == NULL) {
+        fprintf(stdout, "opening sequence file: %s\n", args->seqFile);
+        terror("opening sequence file");
+    }
+
+    if ((seq = calloc(READBUF, sizeof(char))) == NULL) {
+        terror("not enough memory for read buffersequence");
+    }
+
+    //To force read
+    i = READBUF + 1;
+    /*
+    c = buffered_fgetc(seq, &i, &r, f);
+    while (c != '\n') {
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+    */
+
+#ifdef VERBOSE
+    fprintf(stdout, "Calculating sequence length of SeqY\n");
+    fflush(stdout);
+#endif
+
+    args->nSeqs = 0;
+    c = buffered_fgetc(seq, &i, &r, f);
+    while ((!feof(f) || (feof(f) && i < r))) {
+        if (!isupper(toupper(c))) {
+            if (c == '>') {
+                args->nSeqs++;
+                c = buffered_fgetc(seq, &i, &r, f);
+                while (c != '\n')
+                    c = buffered_fgetc(seq, &i, &r, f);
+                c = buffered_fgetc(seq, &i, &r, f);
+                continue;
+            }
+        }
+        Tot++;
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+
+#ifdef VERBOSE
+    fprintf(stdout, "SeqY Len: %" PRIu64 " composed of %" PRIu64" sequence(s)\n", Tot, args->nSeqs);
+    fflush(stdout);
+#endif
+
+    args->seqStats = (struct statsHSP *) malloc(args->nSeqs * sizeof(struct statsHSP));
+    if(args->seqStats == NULL) terror("Could not allocate memory for stats array");
+
+    fseek(f, 0, SEEK_SET);
+    //To force read
+    i = READBUF + 1;
+
+    c = buffered_fgetc(seq, &i, &r, f);
+    while (c != '\n') {
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+
+#ifdef VERBOSE
+    fprintf(stdout, "Allocating memory for words of seqY (including reverse). Size: %" PRIu64 "\n", 2 * Tot);
+    fflush(stdout);
+#endif
+    if (Tot == 0)
+        terror("Empty sequence Y file");
+
+    if ((words = calloc(2 * Tot, sizeof(wentryR))) == NULL) {
+        terror("not enough memory for words array");
+    }
+#ifdef VERBOSE
+    fprintf(stdout, "Allocated memory for words of seqY (including reverse).\n");
+    fflush(stdout);
+#endif
+
+
+    wentryR WE, WER;
+    WE.strand = 'f';
+    WER.strand = 'r';
+    WE.seq = 0;
+    WER.seq = 0;
+    args->seqStats[0].tf.total = 0;
+    uint64_t index = 0;
+    uint64_t inEntry = 0;
+    uint64_t NW = 0;
+    uint64_t NoACGT = 0;
+    uint64_t NoC = 0;
+    uint64_t nLocs = 0;
+    uint64_t loc_size = 0;
+    c = buffered_fgetc(seq, &i, &r, f);
+    while (!feof(f) || (feof(f) && i < r)){
+	if (!isupper(toupper(c))) {
+            if (c == '>') {
+                c = buffered_fgetc(seq, &i, &r, f);
+                while (c != '\n'){
+                    c = buffered_fgetc(seq, &i, &r, f);
+                }
+                WE.seq++;
+                WER.seq++;
+                inEntry = 0;
+                index++;
+            }
+            NoC++;
+            c = buffered_fgetc(seq, &i, &r, f);
+            continue;
+        }
+        args->seqStats[WE.seq].tf.total++;
+        //shift_word(&WE.w);
+        shift_word_right(&WER.w);
+        switch (c) {
+            case 'A':
+                WER.w.b[0] |= 192;
+                inEntry++;
+                args->seqStats[WE.seq].tf.A++;
+                break;
+            case 'C':
+                WER.w.b[0] |= 128;
+                //WE.w.b[BYTES_IN_WORD - 1] |= 1;
+                inEntry++;
+                args->seqStats[WE.seq].tf.C++;
+                break;
+            case 'G':
+                WER.w.b[0] |= 64;
+                //WE.w.b[BYTES_IN_WORD - 1] |= 2;
+                inEntry++;
+                args->seqStats[WE.seq].tf.G++;
+                break;
+            case 'T':
+                //WE.w.b[BYTES_IN_WORD - 1] |= 3;
+                inEntry++;
+                args->seqStats[WE.seq].tf.T++;
+                break;
+            default :
+                inEntry = 0;
+                NoACGT++;
+                break;
+        }
+        index++;
+        if (inEntry >= (uint64_t) WORD_SIZE) {
+            //WE.pos = index - WORD_SIZE;
+            
+            //if (WE.pos > Tot) terror("position of forward word out of the sequence");
+            WER.pos = index - 1;
+            //if (WE.pos > Tot) terror("position of reverse word out of the sequence");
+            //memcpy(&words[NW++], &WE, sizeof(wentryR));
+            memcpy(&words[NW++], &WER, sizeof(wentryR));
+        }
+        c = buffered_fgetc(seq, &i, &r, f);
+    }
+
+    fclose(f);
+    free(seq);
+
+    //Not needed since the karlin and lambda parameters do not change if PAM matrix is the same
+    //computeKarlinLambda(args->seqStats, args->nSeqs);
+
+    if (NW == 0)
+        terror("Words array empty");
+
+#ifdef VERBOSE
+    fprintf(stdout, "Reallocating words of SeqY to: %" PRIu64 "\n", NW);
+    fflush(stdout);
+#endif
+
+    words = realloc(words, NW * sizeof(wentryR));
+    if (words == NULL)
+        terror("Error reallocating words of seqY array");
+
+#ifdef ELAPSEDTIME
+    end = clock();
+    elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
+    fprintf(stdout, "[WORDS] Elapsed time: %lf\n", elapsed_secs);
+#endif
+
+#ifdef VERBOSE
+    fprintf(stdout, "Before sorting seqY\n");
+    fflush(stdout);
+#endif
+
+#ifdef ELAPSEDTIME
+    begin = clock();
+#endif
+
+    psortWR(32, words, NW);
+
+#ifdef ELAPSEDTIME
+    end = clock();
+    elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
+    fprintf(stdout, "[SORTWORDS] Elapsed time: %lf\n", elapsed_secs);
+#endif
+
+#ifdef VERBOSE
+    fprintf(stdout, "After sorting seqY\n");
+    fflush(stdout);
+#endif
+
+#ifdef ELAPSEDTIME
+    begin = clock();
+#endif
+
+#ifdef VERBOSE
+    fprintf(stdout, "Before w2hd seqY\n");
+#endif
+    hashentryR *entries = NULL;
+    if (NW == 0)
+        terror("Words array empty");
+    if ((entries = calloc(REALLOC_FREQ, sizeof(hashentryR))) == NULL) {
+        terror("not enough memory for hashentry array");
+    }
+
+    //Copy first entry
+    memcpy(&entries[0].w.b[0], &words[0].w.b[0], 8);
+    entries[0].num = 0;
+    entries[0].locs = NULL;
+    if ((entries[0].locs = calloc(SIZE_LOC, sizeof(locationR))) == NULL) {
+        terror("not enough memory for locs array");
+    }
+    loc_size = SIZE_LOC;
+
+#ifdef VERBOSE
+    fprintf(stdout, "memory allocated w2hd seqY\n");
+#endif
+
+    locationR loc;
+    i = 0;
+    k = 0;
+    //While there are still words in the dictionary
+    while (i < NW) {
+	//Copy current location to aux var loc
+        loc.pos = words[k].pos;
+        loc.seq = words[k].seq;
+        loc.strand = words[k].strand;
+	//If the last added entry is not equal to the current word in the dictionary (new entry)
+        if (wordcmp(&entries[j].w.b[0], &words[k].w.b[0], 32) != 0) {
+            if (nLocs == 0)
+                terror("nLocs is 0");
+	    //Realloc the locations of the last entry to not consume that much memory
+            entries[j].locs = realloc(entries[j].locs, nLocs * sizeof(locationR));
+            if (entries[j].locs == NULL)
+                terror("Error reallocating location array");
+	    //Since its a new entry, increase j to work with this new one 
+            j++;
+	    //If we have no more free allocated entries, realloc everything to get more
+            if (j >= l) {
+                l += REALLOC_FREQ;
+                entries = realloc(entries, l * sizeof(hashentryR));
+                if (entries == NULL) {
+                    terror("Error reallocating entries of seqX array");
+                }
+            }
+	    //Copy the actual word to the new entry
+            memcpy(&entries[j].w.b[0], &words[k].w.b[0], 8);
+            entries[j].num = 0;
+            nLocs = 0;
+	    //Allocate an initial SIZE_LOC of locations for the new entry
+            if ((entries[j].locs = calloc(SIZE_LOC, sizeof(locationR))) == NULL) {
+                terror("not enough memory for locs array");
+            }
+            loc_size = SIZE_LOC;
+        }
+	//If it was not a new entry, but it has too many repetitions, reallocate the locations with an extra SIZE_LOC
+        if (nLocs >= loc_size) {
+            loc_size += SIZE_LOC;
+//            fprintf(stdout, "Reallocating memory from: %lu to: %lu\n",loc_size-SIZE_LOC,loc_size);
+            entries[j].locs = realloc(entries[j].locs, loc_size * sizeof(locationR));
+            if (entries[j].locs == NULL) {
+                terror("Error re-allocation location array");
+            }
+
+        }
+	//Copy the new location (repetition) to the current entry
+        memcpy(&entries[j].locs[nLocs++], &loc, sizeof(locationR));
+        entries[j].num++;
+        i++;
+        k++;
+	//This part frees words while on runtime [Currently there is a bug]
+	
+        if (i % REALLOC_FREQ == 0) {
+            memmove(words, words + REALLOC_FREQ, sizeof(wentryR)*(NW - i));
+            more_words = realloc(words, (NW - i) * sizeof(wentryR));
+            if (more_words == NULL) {
+                free(words);
+                terror("Error reallocating words of seqY array");
+            } else {
+                words = more_words;
+            }
+            k -= REALLOC_FREQ;
+        }
+	
+    }
+#ifdef VERBOSE
+    fprintf(stdout, "After w2hd seqY\n");
+#endif
+
+#ifdef ELAPSEDTIME
+    end = clock();
+    elapsed_secs = (double)(end-begin)/CLOCKS_PER_SEC;
+    fprintf(stdout, "[W2HD] Elapsed time: %lf\n", elapsed_secs);
+#endif
+
+    if (j == 0)
+        terror("Number of entries in the hash table is 0");
+    free(entries[j].locs);
+    entries = realloc(entries, j * sizeof(hashentryR));
+    if (entries == NULL)
+        terror("Error reallocating entries of seqY array");
+    free(words);
+    *(args->nEntries) = j;
+    *(args->seqLen) = Tot;
+
+
+    return entries;
+}
+
+
+
 
 void computeKarlinLambda(struct statsHSP * seqStats, uint64_t nSeqs){
        
