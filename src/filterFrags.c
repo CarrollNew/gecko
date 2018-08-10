@@ -76,14 +76,14 @@ int main(int ac,char** av){
 		similarity=100.0*(((double)frag.score)/((double)frag.length*4.0));
 		likeness=(((double)frag.ident)/((double)frag.length));
 		
-		if(frag.strand=='r'){
+		if(1 == 0 && frag.strand=='r'){
 			frag.yStart = ytotal - frag.yStart - 1;
 			frag.yEnd = ytotal - frag.yEnd - 1;
 		}
 		
 		
 		if(similarity >= min_sim && (uint64_t)frag.length >= min_l){
-			printf("Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart,frag.yStart,frag.xEnd,frag.yEnd,frag.strand,frag.block,frag.length,frag.score,frag.ident,similarity,likeness,frag.seqX,frag.seqY);
+			printf("Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart,frag.yEnd,frag.xEnd,frag.yStart,frag.strand,frag.block,frag.length,frag.score,frag.ident,similarity,likeness,frag.seqX,frag.seqY);
 		}
 				
 	}
