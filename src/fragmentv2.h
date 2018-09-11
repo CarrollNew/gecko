@@ -11,7 +11,7 @@
 #include "structs.h"
 
 
-struct FragFile* readFragmentsv2(char* s,int* nf,uint64_t *xtotal,uint64_t *ytotal);
+struct FragFile* readFragments(char* s,int* nf,uint64_t *xtotal,uint64_t *ytotal);
 
 int writeFragments(struct FragFile* f,char* s,int nf,uint64_t  xtotal, uint64_t ytotal);
 

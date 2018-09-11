@@ -22,35 +22,9 @@
 //#include "error.h"
 
 
-int writeFragments (struct FragFile* f,char* s,int nf, uint64_t xtotal, uint64_t ytotal){
-/*
-	FILE* fs;
-	int n;
-
-	if((fs=fopen(s,"wb"))==NULL){
-		printf("***ERROR Opening output file");
-		exit(-1);
-	}
 
 //
-//	fwrite(&xtotal,sizeof(int),1,fs);
-//	fwrite(&ytotal,sizeof(int),1,fs);
-	
-	fwrite(&xtotal,sizeof(uint64_t),1,fs);
-	fwrite(&ytotal,sizeof(uint64_t),1,fs);
-
-	for(n=0;n<nf;n++){
-		fwrite(&f[n],sizeof(Fragment),1,fs);
-//		printf("%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%lu\t%d\t%c\n",f[n].xIni,f[n].yIni,f[n].xFin,f[n].yFin,f[n].length,f[n].ident,f[n].score,f[n].seqX,f[n].seqY,f[n].block,f[n].strand);
-	}
-	fclose(fs);
-*/
-return 0;
-
-}
-
-//
-struct FragFile* readFragmentsv2(char* s,int* nf,uint64_t *xtotal,uint64_t *ytotal){
+struct FragFile* readFragments(char* s,int* nf,uint64_t *xtotal,uint64_t *ytotal){
 //Fragment* readFragments(char* s,int* nf,int *xtotal,int *ytotal){
 
 	FILE* fe;

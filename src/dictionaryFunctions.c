@@ -48,21 +48,51 @@ int letterToIndex(char c) {
 	}
 }
 
-int wordcmp(unsigned char *w1, unsigned char *w2, int n) {
+int loadSequence(char *fileName, char *seq, uint64_t *Tot) {
+	FILE *fIn;
+	char c;
 
-	int i = 0, limit;
+	//Opening input and output files
+	if ((fIn = fopen(fileName, "rt")) == NULL)
+		terror("opening sequence file");
 
-	if(n%4 != 0){
-		w1[n/4] = w1[n/4] >> (2*(3-((n-1)%4)));
-		w1[n/4] = w1[n/4] << (2*(3-((n-1)%4)));
-		w2[n/4] = w2[n/4] >> (2*(3-((n-1)%4)));
-		w2[n/4] = w2[n/4] << (2*(3-((n-1)%4)));
-		limit=(n/4)+1;
-	} else {
-		limit = n/4;
+	//Skip the identification of the sequence
+	skipIDLine(fIn);
+
+	// Load Sequence into memory
+	c = fgetc(fIn);
+	while (!feof(fIn)) {
+		//Check if is a letter
+		if (!isupper(toupper(c))) {
+			/*
+			 * If not is a start of a sequence,
+			 * then read a new char and continue
+			 */
+			if (c != '>') {
+				c = fgetc(fIn);
+				continue;
+			}
+		}
+
+		//Get the index of the letter
+		seq[*Tot] = letterToIndex(c);
+
+		//Check if is a multi-sequence file
+		if (c == '>') {
+			skipIDLine(fIn);
+		}
+
+		(*Tot)++;
+		c = fgetc(fIn);
 	}
 
-	for (i=0;i<limit;i++) {
+	fclose(fIn);
+	return 0;
+}
+
+int wordcmp(unsigned char *w1, unsigned char*w2, int n) {
+	int i;
+	for (i=0;i<n;i++) {
 		if (w1[i]<w2[i]) return -1;
 		if (w1[i]>w2[i]) return +1;
 	}

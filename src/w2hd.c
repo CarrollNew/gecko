@@ -25,13 +25,16 @@ int main(int ac, char** av){
 
 	char fname[1024];
 	uint64_t nWords=0;
+	int wordSize=8;
 	FILE* fw, *fOut1, *fOut2;
 
 	wentry we;
 	hashentry he;
 	location loc;
 
-	if(ac!=3)terror("USE: w2hd  wordsSort.In  prefixNameOUT\n");
+	if(ac!=4)terror("USE: w2hd  wordsSort.In  prefixNameOUT PrefixSize (x4--32)\n");
+
+	wordSize = atoi(av[3]);
 
 	if ((fw = fopen(av[1],"rb"))==NULL) terror("opening IN file");
 
@@ -50,7 +53,7 @@ int main(int ac, char** av){
 	while(!feof(fw)){
 		  loc.pos=we.pos;
 		  loc.seq=we.seq;
-		  if (wordcmp(&he.w.b[0],&we.w.b[0],32)!=0) {
+		  if (wordcmp(&he.w.b[0],&we.w.b[0],wordSize)!=0) {
 			 fwrite(&he,sizeof(hashentry),1,fOut1);
 			 memcpy(&he.w.b[0],&we.w.b[0],8);
 			 he.pos=ftell(fOut2);

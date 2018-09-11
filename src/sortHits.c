@@ -21,6 +21,6 @@ int main(int ac, char** av) {
 		exit(1);
 	}
 
-	return psort(atoi(av[1]), atoi(av[2]), av[3], av[4]);
+	return mypsort(atoi(av[1]), atoi(av[2]), av[3], av[4]);
 }
 

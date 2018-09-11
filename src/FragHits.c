@@ -18,9 +18,13 @@
 
  - SeqX & SeqY files are in fasta format
  - Out file (binary) will save a fragment with the format specified in structs.h.
+
+ Feb2012: instead of storing the FragFile structure we are going to sligtly modify the
+ output to store the nIdent instead of Diagonal (since diag = x-y we do not need
+ to store this value)
+
  
- oscart@uma.es
- -------------------------------------------*/
+ ------------------ortrelles@uma.es----Dic/2011-------------*/
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,8 +37,8 @@
 
 int HitsControl(char **av);
 int FragFromHit(long M[1000][100], struct FragFile *myF, hit *H, struct Sequence *sX,
-		uint64_t n0, struct Sequence *sY,
-		uint64_t n1, uint64_t nSeqs1, uint64_t LenOrPer, uint64_t SimTh, int WL,
+		uint64_t n0, uint64_t nsx, struct Sequence *sY,
+		uint64_t n1, uint64_t nsy, uint64_t LenOrPer, uint64_t SimTh, int WL,
 		int fixedL, char strand);
 
 int main(int ac, char **av) {
@@ -53,7 +57,7 @@ int main(int ac, char **av) {
 
 int HitsControl(char **av) {
 	struct Sequence *sX, *sY;
-	uint64_t n0, n1, nSeqs0, nSeqs1;
+	uint64_t n0, n1, ns0, ns1;
 	uint64_t Lmin, SimTh;
 	int WL, fixedL, i, j;
 	int newFrag;
@@ -78,19 +82,19 @@ int HitsControl(char **av) {
 	//Initialize values
 	Lmin = atoi(av[5]);
 	SimTh = atoi(av[6]);
-	WL = atoi(av[7]);
+	WL = POINT * atoi(av[7]);
 	fixedL = atoi(av[8]);
 	strand = av[9][0];
 
 	//Open files
 	if ((f = fopen(av[1], "rt")) == NULL)
 		terror("opening seqX file");
-	sX = LeeSeqDB(f, &n0, &nSeqs0, 0);
+	sX = LeeSeqDB(f, &n0, &ns0, 0);
 	fclose(f);
 
 	if ((f = fopen(av[2], "rt")) == NULL)
 		terror("opening seqY file");
-	sY = LeeSeqDB(f, &n1, &nSeqs1, 0);
+	sY = LeeSeqDB(f, &n1, &ns1, 0);
 	fclose(f);
 
 	if ((fH = fopen(av[3], "rb")) == NULL)
@@ -128,7 +132,7 @@ int HitsControl(char **av) {
 		}
 
 		nHitsUsed++;
-		newFrag = FragFromHit(coverage, &myF, &h, sX, n0, sY, n1, nSeqs1, Lmin, SimTh,
+		newFrag = FragFromHit(coverage, &myF, &h, sX, n0, ns0, sY, n1, ns1, Lmin, SimTh,
 				WL, fixedL, strand);
 		if (newFrag) {
 			writeFragment(&myF, fOut);
@@ -185,8 +189,8 @@ int HitsControl(char **av) {
  * Similarirty thershold and length > mimL
  */
 int FragFromHit(long M[1000][100], struct FragFile *myF, hit *H, struct Sequence *sX,
-		uint64_t n0, struct Sequence *sY,
-		uint64_t n1, uint64_t nSeqs1, uint64_t Lm, uint64_t SimTh, int WL,
+		uint64_t n0, uint64_t nsx, struct Sequence *sY,
+		uint64_t n1, uint64_t nsy, uint64_t Lm, uint64_t SimTh, int WL,
 		int fixedL, char strand) {
 	int64_t ldiag, ldiag2;
 	int64_t xfil, ycol;
@@ -204,8 +208,8 @@ int FragFromHit(long M[1000][100], struct FragFile *myF, hit *H, struct Sequence
 	uint64_t minLength =
 			(fixedL) ?
 					Lm :
-					(uint64_t) (min(getSeqLength(sX),
-							getSeqLength(sY)) * (Lm / 100.0));
+					(uint64_t) (min(getSeqLength(sX, H->posX, nsx),
+							getSeqLength(sY, H->posY, nsy)) * (Lm / 100.0));
 
 	// Initialize values
 	ldiag = min(n0 - H->posX, n1 - H->posY);
@@ -226,8 +230,8 @@ int FragFromHit(long M[1000][100], struct FragFile *myF, hit *H, struct Sequence
 
 	// now, looking for end_frag---
 	while (fragmentLength < ldiag) {
-		valueX = getValue(sX, xfil);
-		valueY = getValue(sY, ycol);
+		valueX = getValue(sX, xfil, nsx);
+		valueY = getValue(sY, ycol, nsy);
 		if (valueX == '*' || valueY == '*') {
 			//separator between sequences
 			break;
@@ -268,8 +272,8 @@ int FragFromHit(long M[1000][100], struct FragFile *myF, hit *H, struct Sequence
 	nIdentities = maxIdentities;
 	if (xfil2 >= 0 && ycol2 >= 0)
 		while (fragmentLength < ldiag2) {
-			valueX = getValue(sX, xfil2);
-			valueY = getValue(sY, ycol2);
+			valueX = getValue(sX, xfil2, nsx);
+			valueY = getValue(sY, ycol2, nsy);
 			if (valueX == '*' || valueY == '*') {
 				//separator between sequences
 				break;
@@ -302,18 +306,18 @@ int FragFromHit(long M[1000][100], struct FragFile *myF, hit *H, struct Sequence
 
 	// Set the values of the FragFile
 	myF->diag = H->diag;
-	myF->xStart = (uint64_t) xfilmax2 - H->seqX;
-	myF->yStart = (uint64_t) ycolmax2 - H->seqY;
-	myF->xEnd = (uint64_t) xfilmax - H->seqX;
-	myF->yEnd = (uint64_t) ycolmax - H->seqY;;
-	myF->length = myF->xEnd - myF->xStart + 1;
+	myF->xStart = xfilmax2;
+	myF->yStart = ycolmax2;
+	myF->xEnd = xfilmax;
+	myF->yEnd = ycolmax;
+	myF->length = xfilmax - xfilmax2 + 1;
 	myF->score = fscoreMax;
 	myF->ident = maxIdentities;
 	myF->similarity = myF->score * 100.0
 			/ scoreMax(&sX->datos[myF->xStart], &sY->datos[myF->yStart],
 					myF->length, POINT);
 	myF->seqX = H->seqX;
-	myF->seqY = (strand=='f')? H->seqY : nSeqs1 - H->seqY - 1;
+	myF->seqY = H->seqY;
 	myF->block = 0;
 	myF->strand = strand;
 

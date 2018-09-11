@@ -30,7 +30,9 @@ fixedL=${6}
 strand=${7}
 distance=$((4*${WL}))
 
-if [[ ! -f ../hits/${seqXName}-${seqYName}-K${WL}.hits.sorted.filtered ]]; then
+#if [[ ! -f ../hits/${seqXName}-${seqYName}-K${WL}.hits.sorted.filtered ]]; then
+	
+
 	echo "${BINDIR}/hits ${seqXName} ${seqYName} ${seqXName}-${seqYName}-K${WL}.hits ${FL} ${WL}"
 	${BINDIR}/hits ${seqXName} ${seqYName} ${seqXName}-${seqYName}-K${WL}.hits ${FL} ${WL}
 	
@@ -41,7 +43,7 @@ if [[ ! -f ../hits/${seqXName}-${seqYName}-K${WL}.hits.sorted.filtered ]]; then
 	${BINDIR}/filterHits ${seqXName}-${seqYName}-K${WL}.hits.sorted ${seqXName}-${seqYName}-K${WL}.hits.sorted.filtered ${WL}
 
 	mv ${seqXName}-${seqYName}-K${WL}.hits.sorted.filtered ../hits/
-fi
+#fi
 
 ln -s ../hits/${seqXName}-${seqYName}-K${WL}.hits.sorted.filtered .
 

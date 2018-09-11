@@ -120,11 +120,12 @@ int NewList(Lista* lista,Fragmentv3* f,int nf){
 				f[i].block=i+1;
 				f[i].id=i;
 				Insertar(lista,m++,f[i],0);
+				printf("%d\t%ld\t%ld\t%ld\t%d\n",i,f[i].id,f[i].score,f[i].length,f[i].block);
 			
 			}else{
 				f[i].id=-1;
 			}
-			//printf("%d\t%ld\t%ld\t%ld\t%d\n",i,f[i].id,f[i].score,f[i].length,f[i].block);
+			
 			
 		}
 		return size_of_list;
@@ -162,6 +163,7 @@ Fragmentv3 fragv3;
 		fragv3=frags[i];
 		fwrite(&fragv3,sizeof(Fragmentv3),1,fs);
 		fprintf(ftxt,"%ld\t%ld\t%ld\t%ld\t%ld\t%c\t%ld\t%d\n",fragv3.xIni,fragv3.yIni,fragv3.xFin,fragv3.yFin,fragv3.length,fragv3.strand,fragv3.score,fragv3.block);
+		printf("%ld\t%ld\t%ld\t%ld\t%ld\t%c\t%ld\t%d\n",fragv3.xIni,fragv3.yIni,fragv3.xFin,fragv3.yFin,fragv3.length,fragv3.strand,fragv3.score,fragv3.block);
 
 		
 	}
@@ -288,6 +290,7 @@ int CSB(Lista *lista,Fragmentv3 *frags){
 		if( L(nodo->anterior->f,nodo->f) ){
 			penal = INI + EXT*(abs( nodo->anterior->f.xFin- nodo->f.xIni)+abs( nodo->anterior->f.yFin- nodo->f.yIni)); 
 			//printf("penal:%d\n",penal);
+			printf("Ultimo bloque: %d\n",nodo->f.block);
 			
 			nodo->anterior->f.xFin = nodo->f.xFin;
 			nodo->anterior->f.yFin = nodo->f.yFin;
@@ -326,13 +329,13 @@ Lista ordenarXY(Lista *lista,char c){
 	
 	while(nodo){
 		if(c=='x'){
-			if(valor>=nodo->f.seqX && nodo->f.block>=0){
+			if(valor>=(int)nodo->f.seqX && (int)nodo->f.block>=0){
 				valor=nodo->f.seqX;
 				primero=nodo;
 			}
 		
 		}else{
-			if(valor>=nodo->f.seqY && nodo->f.block>=0){
+			if(valor>=(int)nodo->f.seqY && (int)nodo->f.block>=0){
 				valor=nodo->f.seqY;
 				primero=nodo;
 			}
@@ -504,6 +507,8 @@ void quickSortY(Fragmentv3 *f, int elements,int ytotal) {
 	
 	
   int  beg[MAX_LEVELS], end[MAX_LEVELS], i=0, L, R, swap ;
+  i=ytotal;
+  i=0;
 	Fragmentv3 piv;
 	
 /*	

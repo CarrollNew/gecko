@@ -36,14 +36,14 @@ int main(int ac, char** av) {
 
 	char fname[1024];
 	int hitsInBuf = 0;
-	int i, j;
+	uint64_t i, j;
 	int comp;
 	int firstMatch = 0, endMatch = 0;
 	uint64_t freqThr;
 	uint64_t nHits = 0, wordMatches = 0;
 	int wSize;
 	int stepX, stepY;
-	long offsetWordBefore, offsetWordAfter, offsetLocationBefore, offsetLocationAfter;
+	long offsetWordBefore=0, offsetWordAfter=0, offsetLocationBefore=0, offsetLocationAfter=0;
 	FILE *fX1, *fX2, *fY1, *fY2, *fOut;
 
 	location *posX = NULL, *posY = NULL;
@@ -124,7 +124,7 @@ int main(int ac, char** av) {
 		if(!firstMatch)loadWordOcurrences(heX, &posX, &fX2);
 
 		// Saving the offset of the first match
-		if(wSize < 32 && !firstMatch){
+		if(wSize < 8 && !firstMatch){
 			offsetWordBefore = ftell(fY1) - sizeof(hashentry);
 			offsetLocationBefore = ftell(fY2);
 			firstMatch = 1;

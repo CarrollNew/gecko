@@ -270,7 +270,7 @@ unsigned long timestop(unsigned long start){
 	return (tv.tv_usec/1000) + (tv.tv_sec*1000) - start;
 }
 
-int psort(int maxsize, int nproc, char* ifile, char* ofile){
+int mypsort(int maxsize, int nproc, char* ifile, char* ofile){
 	int tmp;
 	int max=maxsize;
 	int np=nproc;

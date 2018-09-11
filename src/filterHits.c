@@ -39,7 +39,7 @@ int main(int ac, char** av) {
 
 	if ((fOut = fopen(av[2], "wb")) == NULL)
 		terror("opening HITS OUT file");
-	wSize =  atoi(av[3]);
+	wSize = 4 * atoi(av[3]);
 	lastPosition = 0;
 
 	hitsRead = fread(&hits[0], sizeof(hit), 1, fIn);

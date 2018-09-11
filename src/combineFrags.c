@@ -67,6 +67,7 @@ int main(int ac, char** av) {
 	readFragment(&frag, fIn);
 
 	while (!feof(fIn)) {
+		//printf("the frag is %c with (%"PRIu64",%"PRIu64")\n", frag.strand, frag.length, frag.ident);
 		writeFragment(&frag, fOut);
 		readFragment(&frag, fIn);
 	}

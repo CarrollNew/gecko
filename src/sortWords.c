@@ -41,6 +41,6 @@ int main(int ac, char** av){
 		terror("USE: sortWords <max_size> <num_proc> <input_file> <output_file>\n");
 	}
 
-	return psort(atoi(av[1]),atoi(av[2]),av[3],av[4]);
+	return mypsort(atoi(av[1]),atoi(av[2]),av[3],av[4]);
 }
 

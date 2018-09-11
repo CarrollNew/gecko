@@ -17,13 +17,15 @@
 
 #define SEQSIZE 2000000000
 #define WSIZE 32
-#define NREADS 1000000
+#define NREADS	5000000
+#define BREAK_TIME 60
 
 int main(int ac, char** av) {
 	FILE *fIn, *fOut;
-	int64_t i, j, nR, seqLen = 0;
+	int64_t i, j, nR, nReads = NREADS, seqLen = 0;
 	char *seq, c, toW;
-	long offset[NREADS];
+	long *offset;
+	uint64_t time_to_put_break;
 
 	if (ac != 3)
 		terror("USE: reverseComplement seqFile.IN reverseComplementarySeq.OUT");
@@ -41,14 +43,24 @@ int main(int ac, char** av) {
 	if ((fOut = fopen(av[2], "wt")) == NULL)
 		terror("opening OUT sequence Words file");
 
-	for(i=0;i<NREADS;i++){
-		offset[i]=0;
-	}
+	if ((offset = (long*) calloc(nReads, sizeof(long))) == NULL)
+		terror("memory for offset vector for reads");
 
 	nR = 0;
 	c = fgetc(fIn);
 	while(!feof(fIn)){
 		if(c == '>'){
+			if(nR >= nReads){
+				nReads += NREADS;
+				long *more_offset = NULL;
+				more_offset = realloc(offset, nReads * sizeof(long));
+				
+				if(more_offset == NULL)
+					terror("memory for offset vector for reads");
+
+				offset = more_offset;
+			}
+
 			offset[nR++] = ftell(fIn)-1;
 		}
 		c = fgetc(fIn);
@@ -58,6 +70,7 @@ int main(int ac, char** av) {
 		fseek(fIn, offset[i], SEEK_SET);
 		//READ and write header
 		if(fgets(seq, SEQSIZE, fIn)==NULL){
+			fprintf(stdout, "Error reading read: %" PRIi64 " with offset: %ld\n", i, offset[i]);
 			terror("Empty file");
 		}
 		fprintf(fOut, "%s", seq);
@@ -69,6 +82,7 @@ int main(int ac, char** av) {
 			}
 			c = fgetc(fIn);
 		}
+		time_to_put_break = 0;
 		for(j=seqLen-1; j >= 0; j--){
 			switch(seq[j]){
 				case 'A':
@@ -106,6 +120,8 @@ int main(int ac, char** av) {
 					break;
 			}
 			fwrite(&toW, sizeof(char), 1, fOut);
+			time_to_put_break++;
+			if(time_to_put_break > BREAK_TIME){ toW = '\n'; fwrite(&toW, sizeof(char), 1, fOut); time_to_put_break = 0; }
 		}
 		toW='\n';
 		fwrite(&toW, sizeof(char), 1, fOut);
