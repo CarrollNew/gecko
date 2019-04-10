@@ -95,9 +95,9 @@ for i in $( tail -n +2 $guided ); do
 	
 	if [[ turn -eq 1 ]]; then
 		
-		actualY=`expr $i - 1` # used to be -2
+		actualY=`expr $i - 2` # used to be -2
 		actualY=$(($actualY * $ratioY))
-		fakeActualY=`expr $i + 1`
+		fakeActualY=`expr $i + 2`
 		fakeY=$(($fakeActualY * $ratioY))
 		
 		dasSUMX=`expr $actualX + $ratioX`
