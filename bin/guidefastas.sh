@@ -95,14 +95,14 @@ for i in $( tail -n +2 $guided ); do
 	
 	if [[ turn -eq 1 ]]; then
 		
-		actualY=`expr $i - 2` # used to be -2
+		actualY=`expr $i - 1` # used to be -2
 		actualY=$(($actualY * $ratioY))
-		fakeActualY=`expr $i + 2`
+		fakeActualY=`expr $i + 1`
 		fakeY=$(($fakeActualY * $ratioY))
 		
 		dasSUMX=`expr $actualX + $ratioX`
 		dasSUMY=`expr $actualY + $ratioY`
-		echo "coord X,Y: $actualX-$dasSUMX, $actualY-$dasSUMY"
+		echo "(i: $i) coord X,Y: $actualX-$dasSUMX, $actualY-$dasSUMY"
 		#read -n1 kbd
 
 		echo ">nothing" > tempfastas/Y_${counterY}.fasta	
@@ -130,16 +130,12 @@ for i in $( tail -n +2 $guided ); do
 
 
 
-		#echo "($BINDIR/gecko tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta temp.frags $LEN $SIM $WL)"
 		($BINDIR/gecko tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta temp.frags $LEN $SIM $WL f) | grep "Frags in"
-		#echo "$BINDIR/filterFrags temp.frags $LEN $SIM > X_${counterXprev}-Y_${counterYprev}.csv"
 		($BINDIR/filterFrags temp.frags $LEN $SIM > X_${counterXprev}-Y_${counterYprev}.csv)
-		#cat X_${counterXprev}-Y_${counterYprev}.csv
-		#read -n1 kbd
+		
 		($BINDIR/gecko tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta temp.frags $LEN $SIM $WL r)  | grep "Frags in"
 		($BINDIR/filterFrags temp.frags $LEN $SIM > X_${counterXprev}-Y_${counterYprev}_rev.csv)
 
-		#(tail -n +18 X_${counterXprev}-Y_${counterYprev}.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$actualY" '{print $1,$2+a,$3+b,$4+a,$5+b,$6,$7,$8,$9,$10,$11,$12,$13,$14}') >> all-results/master.csv
 
 
 		(tail -n +18 X_${counterXprev}-Y_${counterYprev}.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$actualY" '{if($6 == "f") print $1,$2+a,$3+b,$4+a,$5+b,$6,$7,$8,$9,$10,$11,$12,$13,$14; else print $1,$2+a,$5+b,$4+a,$3+b,$6,$7,$8,$9,$10,$11,$12,$13,$14 ;}') >> all-results/master.csv

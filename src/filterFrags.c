@@ -70,9 +70,11 @@ int main(int ac,char** av){
 	printf("Type,xStart,yStart,xEnd,yEnd,strand(f/r),block,length,score,ident,similarity,%%ident,SeqX,SeqY\n");
 	
 	double similarity,likeness;
+	struct FragFile f2;
 				
 	while(!feof(fFrags) && file_size > 16){
 		if(feof(fFrags)) break;
+		f2 = frag;
 		readFragment(&frag, fFrags);
 
 		similarity=100.0*(((double)frag.score)/((double)frag.length*4.0));
@@ -84,8 +86,10 @@ int main(int ac,char** av){
 		}
 		
 		
-		if(similarity >= min_sim && (uint64_t)frag.length >= min_l){
+		if(similarity >= min_sim && (uint64_t)frag.length >= min_l ){
+			if(f2.xStart != frag.xStart || f2.xEnd != frag.xEnd || f2.yStart != frag.yStart || f2.yEnd != frag.yEnd){
 			printf("Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart,frag.yStart,frag.xEnd,frag.yEnd,frag.strand,frag.block,frag.length,frag.score,frag.ident,similarity,likeness,frag.seqX,frag.seqY);
+			}
 		}
 				
 	}
