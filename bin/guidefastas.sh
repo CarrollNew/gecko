@@ -164,7 +164,7 @@ for i in $( tail -n +2 $guided ); do
 				j = y1;
 		                for(i=x1; i<=x2; i++){ if(s1[i]==s2[j]) {good++; printf("|");} else printf(" "); j++;  }; printf("\n");
 				for(i=y1; i<=y2; i++){ printf("%c", s2[i]); } printf("\n");
-       	        		print "@ FORWARD STRAND Identity:",good "/" x2-x1, "("100*good/(x2-x1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta
+       	        		print "@ FORWARD STRAND Identity:",good "/" x2-x1+1, "("100*good/(x2-x1+1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta
 			fi
 
 		done
@@ -210,7 +210,7 @@ for i in $( tail -n +2 $guided ); do
 					if(s2[i] == "T") printf("%c", "A"); 
 					if(s2[i] == "N") printf("%c", "N"); 
 				} printf("\n");
-				print "@ REVERSE STRAND Identity:",good "/" x2-x1, "("100*good/(x2-x1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta
+				print "@ REVERSE STRAND Identity:",good "/" x2-x1+1, "("100*good/(x2-x1+1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta
 			fi
 
 		done
