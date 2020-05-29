@@ -2,10 +2,10 @@
 
 BINDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ $# -lt 7 ]; then
+if [ $# -lt 8 ]; then
    echo " ==== ERROR ... you called this script inappropriately."
    echo ""
-   echo "   usage:  $0 seqXName.fasta seqYName.fasta guideFile dimension LEN SIM WL"
+   echo "   usage:  $0 seqXName.fasta seqYName.fasta guideFile dimension LEN SIM WL print[0/1]"
    echo ""
    exit -1
 fi
@@ -39,6 +39,7 @@ dimension=$4
 LEN=$5
 SIM=$6
 WL=$7
+print=$8
 
 lenX=$(wc -c $seqNameX.fix | awk '{print $1}')
 lenY=$(wc -c $seqNameY.fix | awk '{print $1}')
@@ -137,9 +138,82 @@ for i in $( tail -n +2 $guided ); do
 		($BINDIR/filterFrags temp.frags $LEN $SIM > X_${counterXprev}-Y_${counterYprev}_rev.csv)
 
 
+		#echo "$BINDIR/gecko tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta temp.frags $LEN $SIM $WL r"
+		#echo "$BINDIR/filterFrags temp.frags $LEN $SIM > X_${counterXprev}-Y_${counterYprev}_rev.csv"
 
 		(tail -n +18 X_${counterXprev}-Y_${counterYprev}.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$actualY" '{if($6 == "f") print $1,$2+a,$3+b,$4+a,$5+b,$6,$7,$8,$9,$10,$11,$12,$13,$14; else print $1,$2+a,$5+b,$4+a,$3+b,$6,$7,$8,$9,$10,$11,$12,$13,$14 ;}') >> all-results/master.csv
+
+		# Extract forward frags
+
+		for thisfrag in $(tail -n +18 X_${counterXprev}-Y_${counterYprev}.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$actualY" '{if($6 == "f") print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14; else print $1,$2,$5,$4,$3,$6,$7,$8,$9,$10,$11,$12,$13,$14 ;}')
+		do
+			#echo "this line $thisfrag"
+			arrIN=(${thisfrag//,/ })
+
+			xStart=${arrIN[1]}
+			yStart=${arrIN[2]}
+			xEnd=${arrIN[3]}
+			yEnd=${arrIN[4]}
+
+			if [[ $print -eq 1 ]]; then
+
+				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0} 
+				BEGIN{ x1++; y1++; x2++; y2++; }
+	        	       	END{good=0; split(l1, s1, ""); split(l2, s2, "");
+				for(i=x1; i<=x2; i++){ printf("%c", s1[i]); } printf("\n");
+				j = y1;
+		                for(i=x1; i<=x2; i++){ if(s1[i]==s2[j]) {good++; printf("|");} else printf(" "); j++;  }; printf("\n");
+				for(i=y1; i<=y2; i++){ printf("%c", s2[i]); } printf("\n");
+       	        		print "@ FORWARD STRAND Identity:",good "/" x2-x1, "("100*good/(x2-x1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta
+			fi
+
+		done
+
+		
 		(tail -n +18 X_${counterXprev}-Y_${counterYprev}_rev.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$fakeY" -v ratio="$ratioY" '{if($6 == "f") print $1,$2+a,(ratio-$3)+b,$4+a,(ratio-$5)+b,$6,$7,$8,$9,$10,$11,$12,$13,$14; else print $1,$2+a,(ratio-$3)+b,$4+a,(ratio-$5)+b,$6,$7,$8,$9,$10,$11,$12,$13,$14 ;}') >> all-results/master.csv
+
+		# Extract reverse frags
+
+		for thisfrag in $(tail -n +18 X_${counterXprev}-Y_${counterYprev}_rev.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$fakeY" -v ratio="$ratioY" '{if($6 == "f") print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14; else print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14 ;}')
+		do
+
+			#echo "this line $thisfrag"
+			arrIN=(${thisfrag//,/ })
+			xStart=${arrIN[1]}
+			yStart=${arrIN[2]}
+			xEnd=${arrIN[3]}
+			yEnd=${arrIN[4]}
+
+			if [[ $print -eq 1 ]]; then
+
+				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" -v ytotal="$ratioY" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0}
+				BEGIN{ x1++; x2++; y1 = ytotal - y1; y2 = ytotal - y2; y1--; y2--; print x1,x2,y1,y2 }
+				END{good=0; split(l1, s1, ""); split(l2, s2, "");
+				for(i=x1; i<=x2; i++){ printf("%c", s1[i]); } printf("\n");
+
+				j = y1;
+				for(i=x1; i<=x2; i++){ 
+					charS2 = "N";
+					if(s2[j] == "A") charS2 = "T";
+					if(s2[j] == "C") charS2 = "G";
+					if(s2[j] == "G") charS2 = "C";
+					if(s2[j] == "T") charS2 = "A";
+
+					if(s1[i] == charS2) {good++; printf("|");} else printf(" "); 
+					j--;  
+				}; printf("\n");
+
+				for(i=y1; i>=y2; i--){
+					if(s2[i] == "A") printf("%c", "T"); 
+					if(s2[i] == "C") printf("%c", "G"); 
+					if(s2[i] == "G") printf("%c", "C"); 
+					if(s2[i] == "T") printf("%c", "A"); 
+					if(s2[i] == "N") printf("%c", "N"); 
+				} printf("\n");
+				print "@ REVERSE STRAND Identity:",good "/" x2-x1, "("100*good/(x2-x1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta
+			fi
+
+		done
 
 		
 

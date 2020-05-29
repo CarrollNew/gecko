@@ -37,8 +37,11 @@ int main(int ac,char** av){
 	if(fFrags == NULL){ fprintf(stderr, "Could not open input file\n"); exit(-1); }
 
 	fseek(fFrags, 0L, SEEK_END);
-	uint64_t file_size = ftell(fFrags);
+	uint64_t file_size = (uint64_t) ftell(fFrags);
 	rewind(fFrags);
+
+	file_size -= 16;
+	uint64_t total_f = file_size / sizeof(struct FragFile);
 
 	readSequenceLength(&xtotal, fFrags);
 	readSequenceLength(&ytotal, fFrags);
@@ -71,10 +74,15 @@ int main(int ac,char** av){
 	
 	double similarity,likeness;
 	struct FragFile f2;
+
+
+	uint64_t total_read = 0;
 				
-	while(!feof(fFrags) && file_size > 16){
+	while(total_read < total_f && file_size > 16){
 		if(feof(fFrags)) break;
 		f2 = frag;
+
+
 		readFragment(&frag, fFrags);
 
 		similarity=100.0*(((double)frag.score)/((double)frag.length*4.0));
@@ -85,12 +93,13 @@ int main(int ac,char** av){
 			frag.yEnd = ytotal - frag.yEnd - 1;
 		}
 		
-		
 		if(similarity >= min_sim && (uint64_t)frag.length >= min_l ){
 			if(f2.xStart != frag.xStart || f2.xEnd != frag.xEnd || f2.yStart != frag.yStart || f2.yEnd != frag.yEnd){
 			printf("Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart,frag.yStart,frag.xEnd,frag.yEnd,frag.strand,frag.block,frag.length,frag.score,frag.ident,similarity,likeness,frag.seqX,frag.seqY);
 			}
 		}
+
+		total_read++;
 				
 	}
 
