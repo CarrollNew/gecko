@@ -2,10 +2,10 @@
 
 BINDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ $# -lt 8 ]; then
+if [ $# -ne 9 ]; then
    echo " ==== ERROR ... you called this script inappropriately."
    echo ""
-   echo "   usage:  $0 seqXName.fasta seqYName.fasta guideFile dimension LEN SIM WL print[0/1]"
+   echo "   usage:  $0 seqXName.fasta seqYName.fasta guideFile dimension LEN SIM WL print[0/1] ids/names[0/1]"
    echo ""
    exit -1
 fi
@@ -61,8 +61,10 @@ rm $seqNameX.temp $seqNameY.temp
 
 #mapfile -t indexX < <(grep ">" $1 -b | awk -F ":" '{print $1}')
 #mapfile -t indexY < <(grep ">" $2 -b | awk -F ":" '{print $1}')
-grep ">" $1 -b | awk -F ":" '{print $1}' > $seqNameX.indices
-grep ">" $2 -b | awk -F ":" '{print $1}' > $seqNameY.indices
+grep ">" $1 -b | awk -F ":" '{first=$1; $1=""; print first $0;}' | sed 's/ /_/g' | sed 's/>//g' > $seqNameX.indices
+grep ">" $2 -b | awk -F ":" '{first=$1; $1=""; print first $0;}' | sed 's/ /_/g' | sed 's/>//g' > $seqNameY.indices
+#grep ">" $1 -b | awk -F ":" '{print $1 $2}' > $seqNameX.indices
+#grep ">" $2 -b | awk -F ":" '{print $1 $2}' > $seqNameY.indices
 
 #closest=$(binary_search 649261907 indexX)
 
@@ -75,6 +77,7 @@ LEN=$5
 SIM=$6
 WL=$7
 print=$8
+nameIDs=$9
 
 lenX=$(wc -c $seqNameX.fix | awk '{print $1}')
 lenY=$(wc -c $seqNameY.fix | awk '{print $1}')
@@ -116,9 +119,6 @@ echo "Ratio X: $ratioX, Ratio Y: $ratioY"
 for i in $( tail -n +2 $guided ); do
 	#echo "$i"
 
-	if [[ $i -eq 13 ]]; then
-		exit
-	fi
 
 	if [[ turn -eq 0 ]]; then
 	
@@ -287,5 +287,12 @@ for i in $( tail -n +2 $guided ); do
 	
 done
 rm $seqNameX.fix $seqNameY.fix
+
+lx=$(wc -l ${seqNameX}.indices)
+ly=$(wc -l ${seqNameY}.indices)
+
+$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs
+
+#rm $seqNameX.indices $seqNameY.indices
 
 

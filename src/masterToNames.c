@@ -19,6 +19,7 @@ Use: masterToNames master.csv indicesX indicesY
 #include "comparisonFunctions.h"
 #define  MAX_LEVELS  900000
 #define CSV_BUFF 1024
+#define ID_LEN 50
 
 uint64_t iterative_binary_search(uint64_t * array, int64_t start_index, int64_t end_index, uint64_t element){
 
@@ -29,7 +30,9 @@ uint64_t iterative_binary_search(uint64_t * array, int64_t start_index, int64_t 
 		if (array[middle] < element)  start_index = middle + 1;
 		else end_index = middle - 1;
 	}
-	if(element < array[middle]) return middle - 1;
+	if(middle > end_index) return (uint64_t) middle - 1;
+	if(element > array[middle]) return (uint64_t) middle;
+	if(element < array[middle] && middle > 0) return (uint64_t) middle - 1;
 	return (uint64_t) middle;
 }
 
@@ -49,8 +52,8 @@ uint64_t asciiToUint64(const char *text)
 int main(int ac,char** av){
 
 	
-	if(ac<6){
-		printf("Use: csvToFrags <file.csv> <indicesX> <indicesY> <seqs in X> <seqs in Y>\n");
+	if(ac<7){
+		printf("Use: csvToFrags <file.csv> <indicesX> <indicesY> <seqs in X> <seqs in Y> <0 for num ID and 1 for names>\n");
 		exit(-1);
 	}
 	
@@ -72,25 +75,43 @@ int main(int ac,char** av){
 	int seqsInX = atoi(av[4]);
 	int seqsInY = atoi(av[5]);
 
+	int useNames = atoi(av[6]);
+
 	uint64_t indicesX[seqsInX];
 	uint64_t indicesY[seqsInY];
+
+	char seqNamesX[seqsInX][ID_LEN];
+	char seqNamesY[seqsInY][ID_LEN];
+
+	
 
 
 	int pos = 0;
 	char line[CSV_BUFF]; line[0] = '\0';
+	char nameID[CSV_BUFF]; nameID[0] = '\0';
 	char stringo[CSV_BUFF];
-	while(!feof(fIX)){
+	while(!feof(fIX) && pos < seqsInX){
 		fgets(line, CSV_BUFF, fIX);
-		sscanf(line, "%s", &stringo);
-		indicesX[pos++] = asciiToUint64(stringo);
+		sscanf(line, "%s %s", &stringo, &nameID);
+		//printf("%s %s %d\n", stringo, nameID, strlen(nameID));
+		indicesX[pos] = asciiToUint64(stringo);
+		strncpy(seqNamesX[pos], nameID, ID_LEN);
+		++pos;
+		nameID[0] = '\0';
 	}
+	fclose(fIX);
 
 	line[0] = '\0'; pos = 0;
-    while(!feof(fIY)){
+	nameID[0] = '\0';
+    while(!feof(fIY) && pos < seqsInY){
         fgets(line, CSV_BUFF, fIY);
-		sscanf(line, "%s", &stringo);
-        indicesY[pos++] = asciiToUint64(stringo);
+		sscanf(line, "%s %s", &stringo, &nameID);
+        indicesY[pos] = asciiToUint64(stringo);
+		strncpy(seqNamesY[pos], nameID, ID_LEN);
+		++pos;
+		nameID[0] = '\0';
     }
+	fclose(fIY);
 
 
 	line[0] = '\0';
@@ -142,13 +163,18 @@ int main(int ac,char** av){
 		sscanf(line, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%f,%f,%"PRIu64",%"PRIu64"\n",&frag.xStart, &frag.yStart, &frag.xEnd, &frag.yEnd, &frag.strand, &frag.block, &frag.length, &frag.score, &frag.ident, &d1, &d2, &frag.seqX, &frag.seqY);
 
 
-		frag.seqX = iterative_binary_search(indicesX, 0, (int64_t) seqsInX , frag.xStart);
-		frag.seqY = iterative_binary_search(indicesY, 0, (int64_t) seqsInY , frag.yStart);
-
-		fprintf(stdout, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart, frag.yStart, frag.xEnd, frag.yEnd, frag.strand, frag.block, frag.length, frag.score, frag.ident, d1, d2, frag.seqX, frag.seqY);
+		frag.seqX = iterative_binary_search(indicesX, 0, (int64_t) seqsInX - 1, frag.xStart);
+		frag.seqY = iterative_binary_search(indicesY, 0, (int64_t) seqsInY - 1, frag.yStart);
 
 
-		//printf(" I will be honest with ya: for %"PRIu64" i found this: %"PRIu64"@ %"PRIu64"\n", frag.xStart, iterative_binary_search(indicesX, 0, (int64_t) seqsInX , frag.xStart), indicesX[iterative_binary_search(indicesX, 0, (int64_t) seqsInX , frag.xStart)] );
+		if(useNames == 0){
+			fprintf(stdout, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart, frag.yStart, frag.xEnd, frag.yEnd, frag.strand, frag.block, frag.length, frag.score, frag.ident, d1, d2, frag.seqX, frag.seqY);
+		}else{
+			fprintf(stdout, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%s,%s\n",frag.xStart, frag.yStart, frag.xEnd, frag.yEnd, frag.strand, frag.block, frag.length, frag.score, frag.ident, d1, d2, seqNamesX[frag.seqX], seqNamesY[frag.seqY]);
+		}
+
+
+		//printf(" for %"PRIu64" i found this: seqX:%"PRIu64"@ %"PRIu64"\n", frag.xStart, frag.seqX, indicesX[frag.seqX] );
 
 		/*
 
