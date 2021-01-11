@@ -10,7 +10,34 @@ if [ $# -lt 8 ]; then
    exit -1
 fi
 
+binary_search(){
+  TARGET=$1
+	name=$2[@]
+	TO_SEARCH=("${!name}")
+	LENGTH=${#TO_SEARCH[@]}
 
+	START=0
+	END=$((LENGTH - 1))
+	while [[ $START -le $END ]]; do
+		MIDDLE=$((START + ((END - START)/2)))
+		ITEM_AT_MIDDLE=${TO_SEARCH[MIDDLE]}
+		#echo "comparing $TARGET with $ITEM_AT_MIDDLE"
+		if [[  $ITEM_AT_MIDDLE -gt $TARGET ]]; then
+			END=$((END-MIDDLE-1))
+		elif [[ $ITEM_AT_MIDDLE -lt $TARGET ]]; then
+			START=$((MIDDLE+1))
+		else
+			echo $MIDDLE
+			return 0
+		fi
+	done
+	if [[ $TARGET -gt ITEM_AT_MIDDLE ]]; then
+		echo $MIDDLE
+	else
+		echo $((MIDDLE-1))
+	fi
+	return 0
+}
 
 
 
@@ -26,12 +53,20 @@ tr -d '\n' < $seqNameX.temp > $seqNameX.fix
 seqNameY=$(basename "$2")
 seqNameY="${seqNameY%.*}"
 
-
 sed '/>/d' $2 > $seqNameY.temp
 tr -d '\n' < $seqNameY.temp > $seqNameY.fix
-
 rm $seqNameX.temp $seqNameY.temp
 
+### Build index to account on which sequence we are working on ################
+
+#mapfile -t indexX < <(grep ">" $1 -b | awk -F ":" '{print $1}')
+#mapfile -t indexY < <(grep ">" $2 -b | awk -F ":" '{print $1}')
+grep ">" $1 -b | awk -F ":" '{print $1}' > $seqNameX.indices
+grep ">" $2 -b | awk -F ":" '{print $1}' > $seqNameY.indices
+
+#closest=$(binary_search 649261907 indexX)
+
+##################
 
 guided=$3
 dimension=$4
@@ -80,6 +115,10 @@ echo "Ratio X: $ratioX, Ratio Y: $ratioY"
 
 for i in $( tail -n +2 $guided ); do
 	#echo "$i"
+
+	if [[ $i -eq 13 ]]; then
+		exit
+	fi
 
 	if [[ turn -eq 0 ]]; then
 	
@@ -141,6 +180,8 @@ for i in $( tail -n +2 $guided ); do
 		#echo "$BINDIR/gecko tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta temp.frags $LEN $SIM $WL r"
 		#echo "$BINDIR/filterFrags temp.frags $LEN $SIM > X_${counterXprev}-Y_${counterYprev}_rev.csv"
 
+
+
 		(tail -n +18 X_${counterXprev}-Y_${counterYprev}.csv | awk -F "," -v OFS=',' -v a="$actualX" -v b="$actualY" '{if($6 == "f") print $1,$2+a,$3+b,$4+a,$5+b,$6,$7,$8,$9,$10,$11,$12,$13,$14; else print $1,$2+a,$5+b,$4+a,$3+b,$6,$7,$8,$9,$10,$11,$12,$13,$14 ;}') >> all-results/master.csv
 
 		# Extract forward frags
@@ -154,6 +195,15 @@ for i in $( tail -n +2 $guided ); do
 			yStart=${arrIN[2]}
 			xEnd=${arrIN[3]}
 			yEnd=${arrIN[4]}
+
+			# Locate in which sequence they are
+			#seqXid=$(binary_search $xStart indexX)
+			#seqYid=$(binary_search $yStart indexY)
+			#echo "Located $xStart at $seqXid with value ${indexX[$seqXid]}"
+
+			#echo $thisfrag
+			# Write the fragments
+			#(echo $thisfrag | awk -F "," -v OFS=',' -v a="$actualX" -v b="$actualY" -v xname="$seqXid" -v yname="$seqYid" '{if($6 == "f") print $1,$2+a,$3+b,$4+a,$5+b,$6,$7,$8,$9,$10,$11,$12,xname,yname; else print $1,$2+a,$5+b,$4+a,$3+b,$6,$7,$8,$9,$10,$11,$12,xname,yname ;}') >> all-results/master.csv
 
 			if [[ $print -eq 1 ]]; then
 
@@ -183,6 +233,16 @@ for i in $( tail -n +2 $guided ); do
 			yStart=${arrIN[2]}
 			xEnd=${arrIN[3]}
 			yEnd=${arrIN[4]}
+
+			# Locate in which sequence they are
+            #seqXid=$(binary_search $xStart indexX)
+            #seqYid=$(binary_search $yStart indexY)
+            #echo "Located $xStart at $seqXid with value ${indexX[$seqXid]}"
+
+            #echo $thisfrag
+            # Write the fragments
+            #(echo $thisfrag | awk -F "," -v OFS=',' -v a="$actualX" -v b="$fakeY" -v ratio="$ratioY" -v xname="$seqXid" -v yname="$seqYid" '{if($6 == "f") print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,xname,yname; else print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,xname,yname ;}') >> all-results/master.csv
+
 
 			if [[ $print -eq 1 ]]; then
 
