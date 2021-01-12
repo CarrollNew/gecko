@@ -2,13 +2,15 @@
 
 BINDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [ $# -ne 9 ]; then
+if [ $# -lt 7 ]; then
    echo " ==== ERROR ... you called this script inappropriately."
    echo ""
-   echo "   usage:  $0 seqXName.fasta seqYName.fasta guideFile dimension LEN SIM WL print[0/1] ids/names[0/1]"
+   echo "   usage:  $0 seqXName.fasta seqYName.fasta guideFile dimension LEN SIM WL [alignments] [names]"
    echo ""
    exit -1
 fi
+
+
 
 binary_search(){
   TARGET=$1
@@ -61,11 +63,10 @@ rm $seqNameX.temp $seqNameY.temp
 
 #mapfile -t indexX < <(grep ">" $1 -b | awk -F ":" '{print $1}')
 #mapfile -t indexY < <(grep ">" $2 -b | awk -F ":" '{print $1}')
-grep ">" $1 -b | awk -F ":" '{first=$1; $1=""; print first $0;}' | sed 's/ /_/g' | sed 's/>//g' > $seqNameX.indices
-grep ">" $2 -b | awk -F ":" '{first=$1; $1=""; print first $0;}' | sed 's/ /_/g' | sed 's/>//g' > $seqNameY.indices
+grep ">" $1 -b | awk -F ":" '{first=$1; $1=""; print first, $0;}' | sed 's/ /_/g' | sed 's/>//g' | sed 's/_/ /' > $seqNameX.indices
+grep ">" $2 -b | awk -F ":" '{first=$1; $1=""; print first, $0;}' | sed 's/ /_/g' | sed 's/>//g' | sed 's/_/ /' > $seqNameY.indices
 #grep ">" $1 -b | awk -F ":" '{print $1 $2}' > $seqNameX.indices
 #grep ">" $2 -b | awk -F ":" '{print $1 $2}' > $seqNameY.indices
-
 #closest=$(binary_search 649261907 indexX)
 
 ##################
@@ -76,8 +77,20 @@ dimension=$4
 LEN=$5
 SIM=$6
 WL=$7
-print=$8
-nameIDs=$9
+
+print=0
+nameIDs=0
+if [[ $8 == *"alignments"* ]] || [[ $9 == *"alignments"* ]] ; then
+	print=1
+fi
+
+if [[ $8 == *"names"* ]] || [[ $9 == *"names"* ]] ; then
+	nameIDs=1
+fi
+
+
+#print=$8
+#nameIDs=$9
 
 lenX=$(wc -c $seqNameX.fix | awk '{print $1}')
 lenY=$(wc -c $seqNameY.fix | awk '{print $1}')
@@ -288,11 +301,13 @@ for i in $( tail -n +2 $guided ); do
 done
 rm $seqNameX.fix $seqNameY.fix
 
-lx=$(wc -l ${seqNameX}.indices)
-ly=$(wc -l ${seqNameY}.indices)
+lx=$(wc -l ${seqNameX}.indices | awk '{print $1}')
+ly=$(wc -l ${seqNameY}.indices | awk '{print $1}')
 
-$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs
+echo "$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs > all-results/$seqNameX-$seqNameY.csv"
+$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs > all-results/$seqNameX-$seqNameY.csv
 
-#rm $seqNameX.indices $seqNameY.indices
+rm $seqNameX.indices $seqNameY.indices
+rm all-results/master.csv
 
 

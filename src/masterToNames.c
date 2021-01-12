@@ -96,6 +96,7 @@ int main(int ac,char** av){
 		//printf("%s %s %d\n", stringo, nameID, strlen(nameID));
 		indicesX[pos] = asciiToUint64(stringo);
 		strncpy(seqNamesX[pos], nameID, ID_LEN);
+		seqNamesX[pos][ID_LEN-1] = '\0';
 		++pos;
 		nameID[0] = '\0';
 	}
@@ -108,6 +109,7 @@ int main(int ac,char** av){
 		sscanf(line, "%s %s", &stringo, &nameID);
         indicesY[pos] = asciiToUint64(stringo);
 		strncpy(seqNamesY[pos], nameID, ID_LEN);
+		seqNamesY[pos][ID_LEN-1] = '\0';
 		++pos;
 		nameID[0] = '\0';
     }
@@ -154,6 +156,7 @@ int main(int ac,char** av){
 
 	*/
 	float d1,d2;
+
 				
 	while(!feof(fCSV)){
 		if(feof(fCSV)) break;
