@@ -40,7 +40,8 @@ uint64_t asciiToUint64(const char *text)
 {
     uint64_t number=0;
 
-    for(int i=0; i<strlen(text); i++)
+	int i;
+    for(i=0; i<strlen(text); i++)
     {
         char digit=text[i]-'0';           
         number=(number*10)+(uint64_t)digit;
