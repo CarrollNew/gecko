@@ -220,14 +220,14 @@ for i in $( tail -n +2 $guided ); do
 
 			if [[ $print -eq 1 ]]; then
 
-				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0} 
-				BEGIN{ x1++; y1++; x2++; y2++; }
+				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" -v a="$actualX" -v b="$actualY" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0} 
+				BEGIN{ px1=x1; px2=x2; py1=y1; py2=y2; x1++; y1++; x2++; y2++; }
 	        	       	END{good=0; split(l1, s1, ""); split(l2, s2, "");
 				for(i=x1; i<=x2; i++){ printf("%c", s1[i]); } printf("\n");
 				j = y1;
 		                for(i=x1; i<=x2; i++){ if(s1[i]==s2[j]) {good++; printf("|");} else printf(" "); j++;  }; printf("\n");
 				for(i=y1; i<=y2; i++){ printf("%c", s2[i]); } printf("\n");
-       	        		print "@ FORWARD STRAND Identity:",good "/" x2-x1+1, "("100*good/(x2-x1+1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta
+       	        		print "@ FORWARD STRAND x1:",px1+a, "y1:", py1+b, "x2:", px2+a, "y2:", py2+b,"Identity:",good "/" x2-x1+1, "("100*good/(x2-x1+1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}.fasta >> all-results/$seqNameX-$seqNameY.alignments
 			fi
 
 		done
@@ -247,6 +247,7 @@ for i in $( tail -n +2 $guided ); do
 			xEnd=${arrIN[3]}
 			yEnd=${arrIN[4]}
 
+
 			# Locate in which sequence they are
             #seqXid=$(binary_search $xStart indexX)
             #seqYid=$(binary_search $yStart indexY)
@@ -259,8 +260,8 @@ for i in $( tail -n +2 $guided ); do
 
 			if [[ $print -eq 1 ]]; then
 
-				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" -v ytotal="$ratioY" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0}
-				BEGIN{ x1++; x2++; y1 = ytotal - y1; y2 = ytotal - y2; y1--; y2--; print x1,x2,y1,y2 }
+				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" -v ytotal="$ratioY" -v a="$actualX" -v b="$fakeY" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0}
+				BEGIN{ px1=x1; px2=x2; py1=y1; py2=y2;  ; x1++; x2++; y1 = ytotal - y1; y2 = ytotal - y2; y1--; y2--; }
 				END{good=0; split(l1, s1, ""); split(l2, s2, "");
 				for(i=x1; i<=x2; i++){ printf("%c", s1[i]); } printf("\n");
 
@@ -283,7 +284,7 @@ for i in $( tail -n +2 $guided ); do
 					if(s2[i] == "T") printf("%c", "A"); 
 					if(s2[i] == "N") printf("%c", "N"); 
 				} printf("\n");
-				print "@ REVERSE STRAND Identity:",good "/" x2-x1+1, "("100*good/(x2-x1+1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta
+				print "@ REVERSE STRAND","x1:", px1+a, "y1:", (ytotal-py1)+b, "x2:", px2+a, "y2:", (ytotal-py2)+b,  "Identity:",good "/" x2-x1+1, "("100*good/(x2-x1+1)"%)";  }' tempfastas/X_${counterXprev}.fasta tempfastas/Y_${counterYprev}_rev.fasta >> all-results/$seqNameX-$seqNameY.alignments
 			fi
 
 		done
