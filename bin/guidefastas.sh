@@ -10,38 +10,31 @@ if [ $# -lt 7 ]; then
    exit -1
 fi
 
+# Set parameters for
+# --alignments --names --local --sort
+print=0
+nameIDs=0
+coordsLocal=0
+coordsSort=0
 
+itera=8
+while [[ $itera -le $# ]]; do
 
-binary_search(){
-  TARGET=$1
-	name=$2[@]
-	TO_SEARCH=("${!name}")
-	LENGTH=${#TO_SEARCH[@]}
-
-	START=0
-	END=$((LENGTH - 1))
-	while [[ $START -le $END ]]; do
-		MIDDLE=$((START + ((END - START)/2)))
-		ITEM_AT_MIDDLE=${TO_SEARCH[MIDDLE]}
-		#echo "comparing $TARGET with $ITEM_AT_MIDDLE"
-		if [[  $ITEM_AT_MIDDLE -gt $TARGET ]]; then
-			END=$((END-MIDDLE-1))
-		elif [[ $ITEM_AT_MIDDLE -lt $TARGET ]]; then
-			START=$((MIDDLE+1))
-		else
-			echo $MIDDLE
-			return 0
-		fi
-	done
-	if [[ $TARGET -gt ITEM_AT_MIDDLE ]]; then
-		echo $MIDDLE
-	else
-		echo $((MIDDLE-1))
+	if [[ ${!itera} == "--alignments" ]] ; then
+		print=1
 	fi
-	return 0
-}
+	if [[ ${!itera} == "--names" ]] ; then
+        nameIDs=1
+    fi
+    if [[ ${!itera} == "--local" ]] ; then
+        coordsLocal=1
+    fi
+    if [[ ${!itera} == "--sort" ]] ; then
+        coordsSort=1
+    fi
 
-
+	itera=`expr $itera + 1`
+done
 
 
 seqNameX=$(basename "$1")
@@ -61,13 +54,11 @@ rm $seqNameX.temp $seqNameY.temp
 
 ### Build index to account on which sequence we are working on ################
 
-#mapfile -t indexX < <(grep ">" $1 -b | awk -F ":" '{print $1}')
-#mapfile -t indexY < <(grep ">" $2 -b | awk -F ":" '{print $1}')
-grep ">" $1 -b | awk -F ":" '{first=$1; $1=""; print first, $0;}' | sed 's/ /_/g' | sed 's/>//g' | sed 's/_/ /' > $seqNameX.indices
-grep ">" $2 -b | awk -F ":" '{first=$1; $1=""; print first, $0;}' | sed 's/ /_/g' | sed 's/>//g' | sed 's/_/ /' > $seqNameY.indices
-#grep ">" $1 -b | awk -F ":" '{print $1 $2}' > $seqNameX.indices
-#grep ">" $2 -b | awk -F ":" '{print $1 $2}' > $seqNameY.indices
-#closest=$(binary_search 649261907 indexX)
+#grep ">" $1 -b | awk -F ":" '{first=$1; $1=""; print first, $0;}' | sed 's/ /_/g' | sed 's/>//g' | sed 's/_/ /' > $seqNameX.indices
+#grep ">" $2 -b | awk -F ":" '{first=$1; $1=""; print first, $0;}' | sed 's/ /_/g' | sed 's/>//g' | sed 's/_/ /' > $seqNameY.indices
+
+$BINDIR/guidedindex $1 $seqNameX.indices
+$BINDIR/guidedindex $2 $seqNameY.indices
 
 ##################
 
@@ -78,19 +69,6 @@ LEN=$5
 SIM=$6
 WL=$7
 
-print=0
-nameIDs=0
-if [[ $8 == *"alignments"* ]] || [[ $9 == *"alignments"* ]] ; then
-	print=1
-fi
-
-if [[ $8 == *"names"* ]] || [[ $9 == *"names"* ]] ; then
-	nameIDs=1
-fi
-
-
-#print=$8
-#nameIDs=$9
 
 lenX=$(wc -c $seqNameX.fix | awk '{print $1}')
 lenY=$(wc -c $seqNameY.fix | awk '{print $1}')
@@ -248,16 +226,6 @@ for i in $( tail -n +2 $guided ); do
 			yEnd=${arrIN[4]}
 
 
-			# Locate in which sequence they are
-            #seqXid=$(binary_search $xStart indexX)
-            #seqYid=$(binary_search $yStart indexY)
-            #echo "Located $xStart at $seqXid with value ${indexX[$seqXid]}"
-
-            #echo $thisfrag
-            # Write the fragments
-            #(echo $thisfrag | awk -F "," -v OFS=',' -v a="$actualX" -v b="$fakeY" -v ratio="$ratioY" -v xname="$seqXid" -v yname="$seqYid" '{if($6 == "f") print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,xname,yname; else print $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,xname,yname ;}') >> all-results/master.csv
-
-
 			if [[ $print -eq 1 ]]; then
 
 				awk -v x1="$xStart" -v x2="$xEnd" -v y1="$yStart" -v y2="$yEnd" -v ytotal="$ratioY" -v a="$actualX" -v b="$fakeY" 'NR==FNR && FNR==2{l1=$0} NR!=FNR && FNR==2{l2=$0}
@@ -305,10 +273,23 @@ rm $seqNameX.fix $seqNameY.fix
 lx=$(wc -l ${seqNameX}.indices | awk '{print $1}')
 ly=$(wc -l ${seqNameY}.indices | awk '{print $1}')
 
-echo "$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs > all-results/$seqNameX-$seqNameY.csv"
-$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs > all-results/$seqNameX-$seqNameY.csv
+$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs 0 > all-results/$seqNameX-$seqNameY.csv
+
+# If local was enabled, make a copy of the csv with local coordinates
+if [[ $coordsLocal -eq 1 ]]; then
+	$BINDIR/masterToNames all-results/master.csv $seqNameX.indices $seqNameY.indices $lx $ly $nameIDs 1 > all-results/$seqNameX-$seqNameY.loc.csv
+	head -17 all-results/$seqNameX-$seqNameY.loc.csv >  all-results/$seqNameX-$seqNameY.localsorted.csv
+	tail -n +18 all-results/$seqNameX-$seqNameY.loc.csv | sort -k 13,13 -k 14,14 -k 2,2n -k3,3n -t "," >> all-results/$seqNameX-$seqNameY.localsorted.csv
+	rm all-results/$seqNameX-$seqNameY.loc.csv
+fi 
 
 rm $seqNameX.indices $seqNameY.indices
 rm all-results/master.csv
+
+# Sort according to sequence starts and not diagonally
+if [[ $coordsSort -eq 1 ]]; then
+	head -17 all-results/$seqNameX-$seqNameY.csv >  all-results/$seqNameX-$seqNameY.sorted.csv
+	tail -n +18 all-results/$seqNameX-$seqNameY.csv | sort -k 13,13 -k 14,14 -k 2,2n -k3,3n -t "," >> all-results/$seqNameX-$seqNameY.sorted.csv
+fi
 
 

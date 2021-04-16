@@ -53,8 +53,8 @@ uint64_t asciiToUint64(const char *text)
 int main(int ac,char** av){
 
 	
-	if(ac<7){
-		printf("Use: csvToFrags <file.csv> <indicesX> <indicesY> <seqs in X> <seqs in Y> <0 for num ID and 1 for names>\n");
+	if(ac<8){
+		printf("Use: csvToFrags <file.csv> <indicesX> <indicesY> <seqs in X> <seqs in Y> <0 for num ID and 1 for names> <0 for global and 1 for local coords>\n");
 		exit(-1);
 	}
 	
@@ -77,9 +77,12 @@ int main(int ac,char** av){
 	int seqsInY = atoi(av[5]);
 
 	int useNames = atoi(av[6]);
+	int useLocal = atoi(av[7]);
 
 	uint64_t indicesX[seqsInX];
 	uint64_t indicesY[seqsInY];
+	uint64_t lengthsX[seqsInX];
+	uint64_t lengthsY[seqsInX];
 
 	char seqNamesX[seqsInX][ID_LEN];
 	char seqNamesY[seqsInY][ID_LEN];
@@ -90,12 +93,13 @@ int main(int ac,char** av){
 	int pos = 0;
 	char line[CSV_BUFF]; line[0] = '\0';
 	char nameID[CSV_BUFF]; nameID[0] = '\0';
-	char stringo[CSV_BUFF];
+	char stringo[CSV_BUFF]; char lengo[CSV_BUFF];
 	while(!feof(fIX) && pos < seqsInX){
 		fgets(line, CSV_BUFF, fIX);
-		sscanf(line, "%s %s", &stringo, &nameID);
+		sscanf(line, "%s %s %s", &stringo, &nameID, &lengo);
 		//printf("%s %s %d\n", stringo, nameID, strlen(nameID));
 		indicesX[pos] = asciiToUint64(stringo);
+		lengthsX[pos] = asciiToUint64(lengo);
 		strncpy(seqNamesX[pos], nameID, ID_LEN);
 		seqNamesX[pos][ID_LEN-1] = '\0';
 		++pos;
@@ -107,8 +111,9 @@ int main(int ac,char** av){
 	nameID[0] = '\0';
     while(!feof(fIY) && pos < seqsInY){
         fgets(line, CSV_BUFF, fIY);
-		sscanf(line, "%s %s", &stringo, &nameID);
+		sscanf(line, "%s %s %s", &stringo, &nameID, &lengo);
         indicesY[pos] = asciiToUint64(stringo);
+		lengthsY[pos] = asciiToUint64(lengo);
 		strncpy(seqNamesY[pos], nameID, ID_LEN);
 		seqNamesY[pos][ID_LEN-1] = '\0';
 		++pos;
@@ -168,8 +173,22 @@ int main(int ac,char** av){
 
 
 		frag.seqX = iterative_binary_search(indicesX, 0, (int64_t) seqsInX - 1, frag.xStart);
-		frag.seqY = iterative_binary_search(indicesY, 0, (int64_t) seqsInY - 1, frag.yStart);
+		frag.seqY = iterative_binary_search(indicesY, 0, (int64_t) seqsInY - 1, frag.yEnd);
 
+
+		if(useLocal == 1){
+
+			frag.xStart = frag.xStart - indicesX[frag.seqX];
+			frag.xEnd   = frag.xEnd - indicesX[frag.seqX];
+			if(frag.strand == 'f'){
+				frag.yStart = frag.yStart - indicesY[frag.seqY];
+				frag.yEnd   = frag.yEnd - indicesY[frag.seqY];
+			}else{
+				frag.yStart = frag.yStart - indicesY[frag.seqY];
+                frag.yEnd   = frag.yEnd - indicesY[frag.seqY];
+			}
+
+		}
 
 		if(useNames == 0){
 			fprintf(stdout, "Frag,%"PRIu64",%"PRIu64",%"PRIu64",%"PRIu64",%c,%"PRId64",%"PRIu64",%"PRIu64",%"PRIu64",%.2f,%.2f,%"PRIu64",%"PRIu64"\n",frag.xStart, frag.yStart, frag.xEnd, frag.yEnd, frag.strand, frag.block, frag.length, frag.score, frag.ident, d1, d2, frag.seqX, frag.seqY);

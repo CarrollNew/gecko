@@ -3,7 +3,7 @@ CXX=g++
 CFLAGS=-O3 -D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -Wall -DELAPSEDTIME -DVERBOSE
 BIN=../bin
 
-all: gecko wordsStat hitsStat ramgecko2gecko indexmaker filterFrags csvToFrags masterToNames
+all: gecko wordsStat hitsStat ramgecko2gecko indexmaker filterFrags csvToFrags masterToNames guidedindex
 
 stats: wordsStat hitsStat
 
@@ -32,6 +32,9 @@ csvToFrags: csvToFrags.c
 
 masterToNames: masterToNames.c
 	$(CC) $(CFLAGS) dictionaryFunctions.c -lm commonFunctions.c comparisonFunctions.c -lm quicksortWordForward.c quicksortWordReverse.c quicksortHit.c masterToNames.c -lpthread -o $(BIN)/masterToNames
+
+guidedindex: guidedindex.c
+	$(CC) $(CFLAGS) dictionaryFunctions.c -lm commonFunctions.c comparisonFunctions.c -lm quicksortWordForward.c quicksortWordReverse.c quicksortHit.c guidedindex.c -lpthread -o $(BIN)/guidedindex
 
 
 clean:
